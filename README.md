@@ -9,18 +9,34 @@ An automated newsletter generation system built with AWS CDK, Lambda functions, 
 ├── app.py                          # Main CDK app entry point
 ├── cdk.json                        # CDK configuration
 ├── requirements.txt                # Python dependencies
+├── config.py                       # Configuration settings (Bedrock model, owner email, etc.)
 ├── generate_newsletter.py          # Script to generate newsletters using the Bedrock agent
+├── build_layer.sh                  # Script to build Lambda dependency layers
 ├── stacks/                         # CDK stacks
 │   └── bedrock_brief_stack.py      # Main stack with Lambda and Bedrock resources
 ├── lambda/                         # Lambda functions
+│   ├── utils.py                    # Shared utilities (symlinked into all agent functions)
 │   ├── generate_introduction/      # Generates newsletter introduction section
+│   │   ├── index.py                # Lambda handler
 │   ├── generate_fresh_cut/         # Generates fresh content section
+│   │   ├── index.py                # Lambda handler
 │   ├── generate_the_quarry/        # Generates curated content section
+│   │   ├── index.py                # Lambda handler
 │   ├── generate_core_sample/       # Generates video content section
+│   │   ├── index.py                # Lambda handler
 │   ├── assemble_newsletter/        # Combines sections into complete newsletter
-│   └── publish_ghost_post/         # Publishes newsletter to Ghost.org
-└── bedrock/                        # Bedrock agent configurations
-    └── agent_config.py             # Agent configuration and action groups
+│   │   ├── index.py                # Lambda handler
+│   ├── publish_ghost_post/         # Publishes newsletter to Ghost.org
+│   │   ├── index.py                # Lambda handler
+│   └── make_scheduled_issue/       # Scheduled newsletter generator (runs every Tuesday 10 PM ET)
+│       ├── index.py                # Lambda handler
+├── bedrock/                        # Bedrock agent configurations
+│   └── agent_config.py             # Agent configuration and action groups
+└── templates/                      # Jinja2 templates for newsletter sections (symlinked into all agent functions)
+    ├── introduction.md             # Introduction section template
+    ├── fresh_cut.md                # Fresh content section template
+    ├── the_quarry.md               # Curated content section template
+    └── core_sample.md              # Video content section template
 ```
 
 ## Setup
