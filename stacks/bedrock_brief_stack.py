@@ -10,6 +10,8 @@ from aws_cdk import (
     aws_iam as iam,
     aws_bedrock as bedrock,
     aws_s3 as s3,
+    aws_events as events,
+    aws_events_targets as targets,
 )
 from constructs import Construct
 from config import OWNER_EMAIL, BEDROCK_MODEL_ID, DAYS
@@ -52,11 +54,38 @@ class BedrockBriefStack(Stack):
         # Attach the Bedrock policy to the Lambda role
         bedrock_policy.attach_to_role(lambda_role)
 
+        # Add Bedrock Agent permissions to Lambda role
+        bedrock_agent_policy = iam.Policy(
+            self, "LambdaBedrockAgentPolicy",
+            statements=[
+                iam.PolicyStatement(
+                    effect=iam.Effect.ALLOW,
+                    actions=[
+                        "bedrock:PrepareAgent",
+                        "bedrock:GetAgent",
+                        "bedrock:InvokeAgent"
+                    ],
+                    resources=[
+                        "*"
+                    ]
+                )
+            ]
+        )
+        
+        # Attach the Bedrock Agent policy to the Lambda role
+        bedrock_agent_policy.attach_to_role(lambda_role)
+
         # Create an S3 bucket
         content_bucket = s3.Bucket(
             self, "NewsletterBucket",
             removal_policy=cdk.RemovalPolicy.DESTROY,
             auto_delete_objects=True,
+            lifecycle_rules=[
+                s3.LifecycleRule(
+                    id="DeleteAfter14Days",
+                    expiration=cdk.Duration.days(14)
+                )
+            ]
         )
 
         # Add S3 permissions to Lambda role
@@ -215,6 +244,41 @@ class BedrockBriefStack(Stack):
                 "GHOST_ADMIN_API_KEY": os.environ.get("GHOST_ADMIN_API_KEY", ""),
                 "CONTENT_BUCKET_NAME": content_bucket.bucket_name,
             }
+        )
+
+        # Scheduled newsletter generator Lambda function
+        make_scheduled_issue_lambda = _lambda.Function(
+            self, "MakeScheduledIssueFunction",
+            runtime=_lambda.Runtime.PYTHON_3_13,
+            handler="index.handler",
+            code=_lambda.Code.from_asset("lambda/make_scheduled_issue"),
+            role=lambda_role,
+            memory_size=512,
+            timeout=cdk.Duration.seconds(300),  # 5 minutes for agent preparation
+            layers=[dependencies_layer],
+            environment={
+                "POWERTOOLS_SERVICE_NAME": "bedrock-brief",
+            }
+        )
+
+        # Create EventBridge rule to run every Tuesday at 10 PM ET (3 AM UTC next day)
+        # Tuesday = 2 (0=Monday, 1=Tuesday, 2=Wednesday, etc.)
+        # 10 PM ET = 3 AM UTC (next day)
+        scheduled_newsletter_rule = events.Rule(
+            self, "ScheduledNewsletterRule",
+            schedule=events.Schedule.cron(
+                minute="0",
+                hour="3",  # 3 AM UTC = 10 PM ET (previous day)
+                week_day="WED",  # Wednesday UTC = Tuesday ET
+                month="*",
+                year="*"
+            ),
+            description="Triggers newsletter generation every Tuesday evening at 10 PM ET"
+        )
+
+        # Add the Lambda function as a target for the EventBridge rule
+        scheduled_newsletter_rule.add_target(
+            targets.LambdaFunction(make_scheduled_issue_lambda)
         )
 
         # Create IAM role for Bedrock agent
@@ -376,6 +440,12 @@ class BedrockBriefStack(Stack):
             self, "PublishGhostPostLambdaArn",
             value=publish_ghost_post_lambda.function_arn,
             description="ARN of the publish Ghost post Lambda function"
+        )
+
+        cdk.CfnOutput(
+            self, "MakeScheduledIssueLambdaArn",
+            value=make_scheduled_issue_lambda.function_arn,
+            description="ARN of the scheduled newsletter generator Lambda function"
         )
 
         # Output the Bedrock agent ARN

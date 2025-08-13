@@ -48,6 +48,20 @@ An automated newsletter generation system built with AWS CDK, Lambda functions, 
    cdk bootstrap
    ```
 
+## Bedrock Model Access
+
+**Important**: The Bedrock model specified in `config.py` (currently `anthropic.claude-3-sonnet-20240229-v1:0`) must be enabled in your AWS account and region before deployment.
+
+### To enable the model:
+1. Go to the AWS Bedrock console in your target region
+2. Navigate to "Model access" in the left sidebar
+3. Find the model and click "Request model access"
+4. Wait for approval (usually instant for public models)
+5. Ensure the model shows as "Access granted"
+
+### Alternative models:
+You can change the model in `config.py` to any other available Bedrock model, but ensure it's enabled in your account first.
+
 ## Usage
 
 ### Deploy the stack:
@@ -128,16 +142,6 @@ cdk destroy
 - The virtual environment is already activated (you should see `(venv)` in your prompt)
 - All dependencies are installed
 - Ready to start developing!
-
-## Environment Variables
-
-The following environment variables need to be set for the Lambda functions:
-
-- `GHOST_URL`: Your Ghost.org site URL
-- `GHOST_ADMIN_API_KEY`: Your Ghost admin API key
-- `SEARCH_API_KEY`: API key for content search
-- `YOUTUBE_API_KEY`: YouTube Data API key
-- `CONTENT_BUCKET_NAME`: S3 bucket name (automatically set by CDK)
 
 ## Architecture
 
