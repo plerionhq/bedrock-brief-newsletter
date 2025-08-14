@@ -16,7 +16,7 @@ logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)
 
 # Agent configuration
-AGENT_ID = "IDPFKBXJIS"
+AGENT_ID = "HFSZDGSJEI"
 ALIAS_ID = "TSTALIASID"
 REGION = "ap-southeast-2"
 SESSION_ID = f"newsletter-{int(datetime.now().timestamp())}"

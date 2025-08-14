@@ -7,6 +7,8 @@ AWS_REGION = "ap-southeast-2"
 
 # Resource Tags
 OWNER_EMAIL = "daniel.grzelak@plerion.com"
+SERVICE_OWNER_EMAIL = "daniel.grzelak@plerion.com"
+STAGE = "prod"
 
 # Stack Configuration
 STACK_NAME = "BedrockBriefStack"

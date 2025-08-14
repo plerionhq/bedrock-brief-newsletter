@@ -14,7 +14,7 @@ from aws_cdk import (
     aws_events_targets as targets,
 )
 from constructs import Construct
-from config import OWNER_EMAIL, BEDROCK_MODEL_ID, DAYS
+from config import OWNER_EMAIL, SERVICE_OWNER_EMAIL, STAGE, BEDROCK_MODEL_ID, DAYS
 from bedrock.agent_config import create_bedrock_agent_config
 
 
@@ -24,6 +24,8 @@ class BedrockBriefStack(Stack):
         
         # Add default tags to all resources in this stack
         cdk.Tags.of(self).add("Owner", OWNER_EMAIL)
+        cdk.Tags.of(self).add("ServiceOwner", SERVICE_OWNER_EMAIL)
+        cdk.Tags.of(self).add("Stage", STAGE)
 
         # Create IAM role for Lambda functions
         lambda_role = iam.Role(
@@ -258,6 +260,7 @@ class BedrockBriefStack(Stack):
             layers=[dependencies_layer],
             environment={
                 "POWERTOOLS_SERVICE_NAME": "bedrock-brief",
+                "BEDROCK_AGENT_ID": "HFSZDGSJEI",
             }
         )
 
@@ -429,12 +432,6 @@ class BedrockBriefStack(Stack):
             value=assemble_newsletter_lambda.function_arn,
             description="ARN of the assemble newsletter Lambda function"
         )
-
-        # cdk.CfnOutput(
-        #     self, "FinalizeNewsletterLambdaArn",
-        #     value=finalize_newsletter_lambda.function_arn,
-        #     description="ARN of the finalize newsletter Lambda function"
-        # )
 
         cdk.CfnOutput(
             self, "PublishGhostPostLambdaArn",

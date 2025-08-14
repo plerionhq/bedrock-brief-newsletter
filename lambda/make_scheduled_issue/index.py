@@ -14,7 +14,7 @@ logger = logging.getLogger()
 logger.setLevel(logging.INFO)
 
 # Agent configuration
-AGENT_ID = "IDPFKBXJIS"
+AGENT_ID = os.environ.get("BEDROCK_AGENT_ID", "HFSZDGSJEI")
 ALIAS_ID = "TSTALIASID"
 REGION = "ap-southeast-2"
 

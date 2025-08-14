@@ -220,7 +220,7 @@ builders of artificial intelligence services on top of AWS.
 
 - Generate all the newsletter sections
 - Assemble the newsletter from the sections
-- Publish the newsletter to Ghost.org, with the title "Bedrock Brief [date as %d %b %Y]"
+- Publish the newsletter to Ghost.org, with the title "Bedrock Brief [pubication date as %d %b %Y]"
 """,
         foundation_model=BEDROCK_MODEL_ID,
         action_groups=[
