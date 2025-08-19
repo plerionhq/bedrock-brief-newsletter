@@ -75,7 +75,7 @@ def is_ai_related(title: str, description: str) -> bool:
     # Check for specific AI-related keywords/phrases
     ai_keywords = [
         "artificial intelligence", "machine learning", "large language model",
-        "foundation model", "generative ai", "claude", "llm", "anomaly detection",
+        "foundation model", "generative ai", "claude", " llm", "anomaly detection",
         "natural language processing", "computer vision", "speech recognition",
         "text-to-speech", "optical character recognition", "entity resolution"
     ]
