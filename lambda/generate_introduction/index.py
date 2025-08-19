@@ -6,6 +6,8 @@ import json
 import boto3
 import os
 import requests
+import base64
+import random
 from datetime import datetime, timezone
 from botocore.exceptions import ClientError
 from typing import Dict, Any, List, Optional
@@ -36,7 +38,8 @@ def fetch_aws_ai_news(api_key: str, num_results: int = 5) -> Optional[Dict]:
     url = "https://www.searchapi.io/api/v1/search"
     params = {
         "engine": "google_news",
-        "q": "aws ai -site:amazon.com -site:wsj.com -site:bloomberg.com -site:youtube.com, -site:investors.com",
+        "q": "aws ai -site:amazon.com -site:wsj.com -site:bloomberg.com -site:youtube.com, -site:investors.com -site:reuters.com -site:crn.com",
+        # "q": "aws ai -site:amazon.com -site:youtube.com",
         "time_period": "last_week",
         "num": num_results,
         "api_key": api_key
@@ -217,6 +220,121 @@ def generate_introduction(cutoff_date: datetime) -> str:
     return ai_introduction
 
 
+def generate_image_prompt_from_introduction(introduction_text: str, model_id: str = BEDROCK_MODEL_ID) -> Optional[str]:
+    """
+    Use the primary LLM to generate a single high-quality image prompt for Titan based on the introduction.
+    The prompt should describe a horizontal, text-free, creative feature image capturing the introduction's themes.
+    """
+    try:
+        bedrock = boto3.client('bedrock-runtime', region_name='us-east-1')
+
+        prompt = (
+            "Create a single creative prompt for an AI image model (Amazon Titan Image Generator) based on the newsletter introduction below.\n"
+            "Requirements:\n"
+            "- Abstract, concept-driven imagery only (no people, no faces)\n"
+            "- No text, lettering, watermarks, logos, trademarks, or brand names\n"
+            "- Do not depict specific products, UIs, or copyrighted characters\n"
+            "- Horizontal/wide aspect composition suitable for a feature banner\n"
+            "- Keep under 30 words.\n\n"
+            "Respond with ONLY the image prompt text, no quotes or extra narration.\n\n"
+            f"Introduction:\n{introduction_text}\n"
+        )
+
+        body = json.dumps({
+            "anthropic_version": "bedrock-2023-05-31",
+            "max_tokens": 300,
+            "messages": [
+                {
+                    "role": "user",
+                    "content": prompt
+                }
+            ]
+        })
+
+        response = bedrock.invoke_model(
+            body=body,
+            modelId=model_id,
+            accept="application/json",
+            contentType="application/json"
+        )
+        response_body = json.loads(response.get('body').read())
+        return response_body['content'][0]['text'].strip()
+    except Exception as e:
+        print(f"Error generating image prompt: {e}")
+        return None
+
+
+def generate_feature_image_and_upload(prompt: str, bucket_name: str, base_key: str) -> Optional[str]:
+    """
+    Generate a horizontal feature image using Titan v2 and upload to S3.
+
+    Returns the S3 key of the uploaded image on success, otherwise None.
+    """
+    try:
+        bedrock = boto3.client('bedrock-runtime', region_name='us-east-1')
+        s3_client = boto3.client('s3')
+
+        seed = random.randint(0, 2_147_483_647)
+
+        # Build safe attempt prompts: original with safety prefix plus abstract fallbacks
+        safety_prefix = (
+            "Abstract, text-free, no people or faces, no logos or trademarks, no brand names. "
+        )
+        attempts: List[str] = []
+        if prompt:
+            attempts.append((safety_prefix + (prompt or "")).strip())
+
+        fallback_prompts = [
+            "Abstract geometric waves and circuit traces in deep blue and teal, clean minimal tech banner, no text or logos",
+            "Isometric circuit board patterns and network nodes, monochrome line art, modern wide banner, no text or branding",
+            "Gradient mesh with polygonal network lines and subtle glows, futuristic technology vibe, wide banner, no text or logos",
+        ]
+        attempts.extend(fallback_prompts)
+
+        for idx, attempt_prompt in enumerate(attempts):
+            try:
+                safe_prompt = attempt_prompt.strip()[:512]
+                cfg = 8.0 if idx == 0 else (6.5 if idx == 1 else 5.5)
+                native_request = {
+                    "taskType": "TEXT_IMAGE",
+                    "textToImageParams": {
+                        "text": safe_prompt
+                    },
+                    "imageGenerationConfig": {
+                        "numberOfImages": 1,
+                        "height": 768,
+                        "width": 1408,
+                        "cfgScale": cfg,
+                        "seed": seed + idx
+                    }
+                }
+
+                request = json.dumps(native_request)
+                response = bedrock.invoke_model(
+                    modelId="amazon.titan-image-generator-v2:0",
+                    body=request,
+                    accept="application/json",
+                    contentType="application/json",
+                )
+                model_response = json.loads(response["body"].read())
+                base64_image_data = model_response["images"][0]
+                image_bytes = base64.b64decode(base64_image_data)
+                key = f"{base_key}.png"
+                s3_client.put_object(Bucket=bucket_name, Key=key, Body=image_bytes, ContentType="image/png")
+                return key
+            except Exception as e:
+                err_text = str(e)
+                print(f"Image generation attempt {idx+1} failed: {err_text}")
+                # Try next attempt if content was blocked or request malformed
+                if "blocked" in err_text.lower() or "validationexception" in err_text.lower() or "malformed" in err_text.lower():
+                    continue
+                # Otherwise still continue to try fallbacks
+                continue
+    except Exception as e:
+        print(f"Error generating or uploading feature image: {e}")
+        return None
+
+
 def handler(event: Dict[str, Any], context: Any) -> Dict[str, Any]:
     """
     Generate introduction section for the Bedrock Brief newsletter
@@ -267,10 +385,26 @@ def handler(event: Dict[str, Any], context: Any) -> Dict[str, Any]:
         
         print(f"Successfully saved introduction content to S3: s3://{bucket_name}/{filename}")
         
+        # Generate a feature image prompt using the LLM and create a Titan image
+        image_prompt = generate_image_prompt_from_introduction(response_text)
+        image_key = None
+        if image_prompt:
+            base_key = f"introduction_{date_str}_feature"
+            image_key = generate_feature_image_and_upload(image_prompt, bucket_name, base_key)
+            if image_key:
+                print(f"Successfully saved feature image to S3: s3://{bucket_name}/{image_key}")
+            else:
+                print("Feature image generation returned no key")
+        else:
+            print("Image prompt generation failed; skipping image generation")
+
         # Format response body for Bedrock agent
         response_body = {
             'TEXT': {
-                'body': f"Introduction content successfully saved to S3: s3://{bucket_name}/{filename}"
+                'body': (
+                    f"Introduction saved: s3://{bucket_name}/{filename}" +
+                    (f" | Feature image: s3://{bucket_name}/{image_key}" if image_key else "")
+                )
             }
         }
         

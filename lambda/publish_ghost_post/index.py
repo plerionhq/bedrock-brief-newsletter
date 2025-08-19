@@ -64,7 +64,7 @@ def create_jwt_token(admin_api_key: str) -> str:
     return token
 
 
-def create_and_schedule_post(title: str, content: str, ghost_url: str, admin_api_key: str) -> Optional[dict]:
+def create_and_schedule_post(title: str, content: str, ghost_url: str, admin_api_key: str, feature_image_url: Optional[str] = None) -> Optional[dict]:
     """
     Create and schedule a post in Ghost.org for publication and email.
     
@@ -148,6 +148,33 @@ def create_and_schedule_post(title: str, content: str, ghost_url: str, admin_api
         
         print(f"Successfully created draft post with ID: {post_id}")
         print(f"Post updated_at: {post_updated_at}")
+
+        # Optional: Update post with feature image before scheduling
+        if feature_image_url:
+            update_headers = {
+                'Authorization': f'Ghost {jwt_token}',
+                'Content-Type': 'application/json',
+                'Accept-Version': 'v5.0'
+            }
+            update_data = {
+                "posts": [{
+                    "id": post_id,
+                    "updated_at": post_updated_at,
+                    "feature_image": feature_image_url,
+                    "feature_image_alt": None,
+                    "feature_image_caption": None,
+                    "featured": True
+                }]
+            }
+            update_url = f"{ghost_url}/ghost/api/admin/posts/{post_id}/"
+            update_response = requests.put(update_url, headers=update_headers, json=update_data)
+            if update_response.status_code != 200:
+                print(f"Failed to update Ghost post with feature image. Status: {update_response.status_code}")
+                print(f"Response: {update_response.text}")
+            else:
+                updated = update_response.json()
+                post_updated_at = updated['posts'][0]['updated_at']
+                print("Feature image set on post.")
         
         # Step 2: Calculate the target Wednesday at 8 AM Eastern Time
         
@@ -235,8 +262,8 @@ def publish_ghost_post(title: str, content: str) -> Dict[str, Any]:
     if not GHOST_URL or not GHOST_API_KEY:
         raise ValueError("GHOST_URL and GHOST_ADMIN_API_KEY environment variables are required")
     
-    # Create and schedule post
-    post_result = create_and_schedule_post(title, content, GHOST_URL, GHOST_API_KEY)
+    # Create and schedule post (no image handling here; done with cutoff date in publish_newsletter_to_ghost)
+    post_result = create_and_schedule_post(title, content, GHOST_URL, GHOST_API_KEY, None)
     
     if not post_result:
         return {
@@ -317,9 +344,40 @@ def publish_newsletter_to_ghost(title: str, cutoff_date: datetime) -> Dict[str, 
     
     # Read newsletter content from S3
     newsletter_content = read_newsletter_from_s3(bucket_name, date_str)
-    
-    # Publish the post
-    return publish_ghost_post(title, newsletter_content)
+
+    # Upload today's feature image first (assume PNG) — required
+    s3 = boto3.client('s3')
+    image_key = f"introduction_{date_str}_feature.png"
+    # Ensure it exists in S3
+    try:
+        s3.head_object(Bucket=bucket_name, Key=image_key)
+    except Exception:
+        raise Exception(f"Required feature image not found in S3: s3://{bucket_name}/{image_key}")
+
+    # Download and upload to Ghost Images API
+    obj = s3.get_object(Bucket=bucket_name, Key=image_key)
+    data = obj['Body'].read()
+    jwt_token = create_jwt_token(GHOST_API_KEY)
+    upload_headers = {
+        'Authorization': f'Ghost {jwt_token}',
+        'Accept-Version': 'v5.0'
+    }
+    files = {
+        'file': (image_key, data, 'image/png')
+    }
+    upload_url = f"{GHOST_URL}/ghost/api/admin/images/upload/"
+    upload_resp = requests.post(upload_url, headers=upload_headers, files=files)
+    if upload_resp.status_code != 201:
+        raise Exception(f"Ghost feature image upload failed: {upload_resp.status_code} {upload_resp.text}")
+
+    img_json = upload_resp.json()
+    feature_image_url = img_json.get('images', [{}])[0].get('url')
+    if not feature_image_url:
+        raise Exception("Ghost did not return an image URL for the uploaded feature image")
+    print(f"Uploaded feature image to Ghost: {feature_image_url}")
+
+    # Publish the post with required feature image URL
+    return create_and_schedule_post(title, newsletter_content, GHOST_URL, GHOST_API_KEY, feature_image_url)
 
 
 def handler(event: Dict[str, Any], context: Any) -> Dict[str, Any]:

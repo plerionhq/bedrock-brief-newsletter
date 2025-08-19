@@ -14,7 +14,7 @@ from aws_cdk import (
     aws_events_targets as targets,
 )
 from constructs import Construct
-from config import OWNER_EMAIL, SERVICE_OWNER_EMAIL, STAGE, BEDROCK_MODEL_ID, DAYS
+from config import OWNER_EMAIL, SERVICE_OWNER_EMAIL, STAGE, BEDROCK_MODEL_ID, BEDROCK_AGENT_ID, DAYS
 from bedrock.agent_config import create_bedrock_agent_config
 
 
@@ -260,7 +260,7 @@ class BedrockBriefStack(Stack):
             layers=[dependencies_layer],
             environment={
                 "POWERTOOLS_SERVICE_NAME": "bedrock-brief",
-                "BEDROCK_AGENT_ID": "HFSZDGSJEI",
+                "BEDROCK_AGENT_ID": BEDROCK_AGENT_ID,
             }
         )
 
