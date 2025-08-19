@@ -231,7 +231,8 @@ def generate_image_prompt_from_introduction(introduction_text: str, model_id: st
         prompt = (
             "Create a single creative prompt for an AI image model (Amazon Titan Image Generator) based on the newsletter introduction below.\n"
             "Requirements:\n"
-            "- Abstract, concept-driven imagery only (no people, no faces)\n"
+            "- Abstract, cartoony imagery only (no people, no faces)\n"
+            "- Include at least one rock element\n"
             "- No text, lettering, watermarks, logos, trademarks, or brand names\n"
             "- Do not depict specific products, UIs, or copyrighted characters\n"
             "- Horizontal/wide aspect composition suitable for a feature banner\n"
@@ -285,7 +286,7 @@ def generate_feature_image_and_upload(prompt: str, bucket_name: str, base_key: s
             attempts.append((safety_prefix + (prompt or "")).strip())
 
         fallback_prompts = [
-            "Abstract geometric waves and circuit traces in deep blue and teal, clean minimal tech banner, no text or logos",
+            "Abstract cartoony waves and circuit traces in deep blue and teal, clean minimal tech banner, no text or logos",
             "Isometric circuit board patterns and network nodes, monochrome line art, modern wide banner, no text or branding",
             "Gradient mesh with polygonal network lines and subtle glows, futuristic technology vibe, wide banner, no text or logos",
         ]
