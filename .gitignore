@@ -344,4 +344,7 @@ local_*
 ehthumbs.db
 Thumbs.db
 Desktop.ini
-$RECYCLE.BIN/ 
+$RECYCLE.BIN/
+
+# Test outputs
+test_output/ 

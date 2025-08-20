@@ -195,8 +195,6 @@ Please provide your analysis in the following JSON format:
 {{
     "best_video_number": <integer>
 }}
-
-Focus on providing a thoughtful, well-reasoned analysis that explains why the chosen video stands out above the others.
 """
         
         # Call Bedrock for analysis

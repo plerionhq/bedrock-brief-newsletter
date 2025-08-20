@@ -176,16 +176,26 @@ def create_and_schedule_post(title: str, content: str, ghost_url: str, admin_api
                 post_updated_at = updated['posts'][0]['updated_at']
                 print("Feature image set on post.")
         
-        # Step 2: Calculate the target Wednesday at 8 AM Eastern Time
+        # Step 2: Calculate the next available Wednesday at 8 AM Eastern Time
         
         # Get current time in UTC
         current_utc = datetime.now(timezone.utc)
         
         # Calculate days until next Wednesday (0 = Monday, 1 = Tuesday, 2 = Wednesday, etc.)
         days_until_wednesday = (2 - current_utc.weekday()) % 7
-        if days_until_wednesday == 0:
-            # If today is Wednesday, schedule for next Wednesday
-            days_until_wednesday = 7
+        
+        # If today is Wednesday, check if we can schedule for today or need to wait for next week
+        if days_until_wednesday == 0:  # Today is Wednesday
+            # Check if it's before 8 AM ET (13:00 UTC) - if so, schedule for today
+            # If it's after 8 AM ET, schedule for next Wednesday
+            current_hour_utc = current_utc.hour
+            if current_hour_utc < 13:  # Before 1 PM UTC = before 8 AM ET
+                days_until_wednesday = 0  # Schedule for today
+            else:
+                days_until_wednesday = 7  # Schedule for next Wednesday
+        else:
+            # Not Wednesday, schedule for next Wednesday
+            pass
         
         # Calculate the target Wednesday at 8 AM Eastern Time
         # Eastern Time is UTC-5 (EST) or UTC-4 (EDT), so 8 AM ET = 13:00 UTC (EST) or 12:00 UTC (EDT)
@@ -197,6 +207,8 @@ def create_and_schedule_post(title: str, content: str, ghost_url: str, admin_api
         eastern_offset = timedelta(hours=5)  # EST offset
         scheduled_time_eastern = scheduled_time_utc - eastern_offset
         
+        print(f"Current time UTC: {current_utc.strftime('%Y-%m-%d %H:%M UTC')}")
+        print(f"Days until target: {days_until_wednesday}")
         print(f"Target Wednesday: {scheduled_time_eastern.strftime('%Y-%m-%d %I:%M %p ET')}")
         print(f"Scheduled time UTC: {scheduled_time_utc.isoformat()}")
         
