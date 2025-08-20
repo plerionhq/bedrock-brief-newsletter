@@ -232,7 +232,6 @@ def generate_image_prompt_from_introduction(introduction_text: str, model_id: st
             "Create a single creative prompt for an AI image model (Amazon Titan Image Generator) based on the newsletter introduction below.\n"
             "Requirements:\n"
             "- Use thick paint brush strokes and watercolor painting style"
-            "- Abstract, cartoony imagery only (no people, no faces)\n"
             "- Include at least one rock element\n"
             "- No text, lettering, watermarks, logos, trademarks, or brand names\n"
             "- Do not depict specific products, UIs, or copyrighted characters\n"
