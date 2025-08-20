@@ -6,6 +6,7 @@ import boto3
 import json
 import logging
 import time
+import os
 from datetime import datetime, timezone
 from botocore.exceptions import ClientError
 
@@ -16,7 +17,7 @@ logger.setLevel(logging.INFO)
 # Agent configuration
 AGENT_ID = os.environ.get("BEDROCK_AGENT_ID")
 ALIAS_ID = "TSTALIASID"
-REGION = "ap-southeast-2"
+REGION = "us-east-1"
 
 def prepare_agent(client, agent_id):
     """Prepare the latest version of the agent before running it"""

@@ -85,7 +85,7 @@ def is_ai_related(title: str, description: str) -> bool:
             return True
     
     # Check for specific AI/ML terms with word boundaries
-    standalone_ai_terms = [" ai ", " ml ", " nlp ", " cv "]
+    standalone_ai_terms = [" ai ", " ml ", " nlp "]
     
     for term in standalone_ai_terms:
         if term in f" {title_lower} " or term in f" {desc_lower} ":
