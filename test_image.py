@@ -11,13 +11,11 @@ import os
 from typing import List, Optional
 
 # Test introduction text
-TEST_INTRODUCTION = """LONDON -- Ukrainian President Volodymyr Zelenskyy wasn't going to risk being accused of being ungrateful this time.
+TEST_INTRODUCTION = """LWelcome to another week of AI shenanigans, AWS enthusiasts! It seems the cloud giants are playing a game of "who can make the most controversial AI statement" lately. Amazon's cloud chief, Matt Garman, took the cake by declaring that replacing junior employees with AI is "one of the dumbest things" he's ever heard. Apparently, he's not keen on the idea of a future workforce consisting solely of AI and grumpy senior developers who haven't touched a keyboard in years.
 
-With peace talks on the table and a chance to rebound from his disastrous White House scolding six months ago, Zelenskyy made sure to show his gratitude to U.S. President Donald Trump during Monday's meeting in the Oval Office.
+Speaking of touching keyboards, AWS's new AI-powered coding tool, Kiro, is causing quite the stir. What was initially hailed as a wallet-friendly developer's dream has quickly turned into a "wallet-wrecking tragedy." It turns out that those nifty AI-assisted coding sessions might cost you more than your morning coffee habit. Who knew that asking an AI to fix your buggy code could be more expensive than therapy?
 
-In fact, he thanked Trump nine times in the first minute of their brief public meeting that preceded a short news conference.
-
-“Thanks so much, Mr. President,” he said. “First of all, thank you for the invitation and thank you very much for your efforts, personal efforts to stop killings and stop this war. Thank you.”
+But fear not, aspiring tech wizards! According to Garman, the key to surviving the AI revolution isn't mastering the latest programming language or becoming an AI expert. No, the most valuable skill in this brave new world is... drumroll, please... critical thinking! So put down that machine learning textbook and pick up a Rubik's Cube. Your future career may depend on how well you can solve puzzles while simultaneously explaining your thought process to a confused AI assistant.”
 
 """
 
