@@ -347,4 +347,5 @@ Desktop.ini
 $RECYCLE.BIN/
 
 # Test outputs
-test_output/ 
+test_output/
+test_image.py
