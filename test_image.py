@@ -11,11 +11,15 @@ import os
 from typing import List, Optional
 
 # Test introduction text
-TEST_INTRODUCTION = """Welcome to another week of AI shenanigans, AWS enthusiasts! It seems the cloud giants are playing a game of "who can make the most controversial AI statement" lately. Amazon's cloud chief, Matt Garman, took the cake by declaring that [replacing junior employees with AI is "one of the dumbest things" he's ever heard](https://www.businessinsider.com/amazon-cloud-chief-replacing-junior-staff-ai-matt-garman-2025-8). Apparently, he's not keen on the idea of a future workforce consisting solely of AI and grumpy senior developers who haven't touched a keyboard in years.
+TEST_INTRODUCTION = """LONDON -- Ukrainian President Volodymyr Zelenskyy wasn't going to risk being accused of being ungrateful this time.
 
-Speaking of touching keyboards, AWS's new AI-powered coding tool, Kiro, is causing quite the stir. What was initially hailed as a wallet-friendly developer's dream has quickly turned into a "wallet-wrecking tragedy." It turns out that those nifty AI-assisted coding sessions might cost you more than your morning coffee habit. Who knew that asking an AI to fix your buggy code could be more expensive than therapy?
+With peace talks on the table and a chance to rebound from his disastrous White House scolding six months ago, Zelenskyy made sure to show his gratitude to U.S. President Donald Trump during Monday's meeting in the Oval Office.
 
-But fear not, aspiring tech wizards! According to Garman, the key to surviving the AI revolution isn't mastering the latest programming language or becoming an AI expert. No, the most valuable skill in this brave new world is... drumroll, please... critical thinking! So put down that machine learning textbook and pick up a Rubik's Cube. Your future career may depend on how well you can solve puzzles while simultaneously explaining your thought process to a confused AI assistant."""
+In fact, he thanked Trump nine times in the first minute of their brief public meeting that preceded a short news conference.
+
+“Thanks so much, Mr. President,” he said. “First of all, thank you for the invitation and thank you very much for your efforts, personal efforts to stop killings and stop this war. Thank you.”
+
+"""
 
 
 def generate_image_prompt_from_introduction(introduction_text: str, model_id: str = "anthropic.claude-3-5-sonnet-20240620-v1:0") -> Optional[str]:
@@ -26,18 +30,18 @@ def generate_image_prompt_from_introduction(introduction_text: str, model_id: st
     try:
         bedrock = boto3.client('bedrock-runtime', region_name='us-east-1')
 
-        prompt = (
-            "Create a single creative prompt for an AI image model (Amazon Titan Image Generator) based on the newsletter introduction below.\n"
-            "Requirements:\n"
-            "- Use thick paint brush strokes and watercolor painting style"
-            "- Include at least one rock element\n"
-            "- No text, lettering, watermarks, logos, trademarks, or brand names\n"
-            "- Do not depict specific products, UIs, or copyrighted characters\n"
-            "- Horizontal/wide aspect composition suitable for a feature banner\n"
-            "- Keep under 30 words.\n\n"
-            "Respond with ONLY the image prompt text, no quotes or extra narration.\n\n"
-            f"Introduction:\n{introduction_text}\n"
-        )
+        prompt = f"""Create a single creative prompt for an AI image model (Amazon Titan Image Generator) based on the newsletter introduction below.
+Requirements:
+- Make it obvious how it relates to the introduction text
+- Use thick paint brush strokes and watercolor painting style
+- Include at least one rock element
+- No text, lettering, watermarks, logos, trademarks, or brand names
+- Do not depict specific products, UIs, or copyrighted characters
+- Horizontal/wide aspect composition suitable for a feature banner
+- Keep under 30 words.
+Respond with ONLY the image prompt text, no quotes or extra narration.
+
+Introduction:\n{introduction_text}\n"""
 
         body = json.dumps({
             "anthropic_version": "bedrock-2023-05-31",
@@ -79,7 +83,7 @@ def generate_feature_image_and_save(prompt: str, output_dir: str = "test_output"
 
         # Build safe attempt prompts: original with safety prefix plus abstract fallbacks
         safety_prefix = (
-            "Abstract, text-free, no people or faces, no logos or trademarks, no brand names."
+            "Abstract, text-free, no people or faces, no logos or trademarks, no brand names. "
         )
         attempts: List[str] = []
         if prompt:

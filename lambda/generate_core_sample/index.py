@@ -159,7 +159,6 @@ def analyze_videos_with_bedrock(videos: List[Dict[str, Any]]) -> Dict[str, Any]:
         # Format videos for analysis
         formatted_videos = []
         for i, video in enumerate(videos, 1):
-            print(i, video['title'])
             formatted_video = f"""
 Number {i}:
 Title: {video['title']}
@@ -336,13 +335,11 @@ def fetch_youtube_videos(cutoff_date: datetime) -> List[Dict[str, Any]]:
         # Filter for AI-related videos only
         ai_videos = [v for v in videos if is_ai_related(v['title'], v['description'])]
         
-        print(f"Found {len(videos)} videos from {channel_names[i]}, {len(ai_videos)} are AI-related")
         all_videos.extend(ai_videos)
     
     # Sort by published date (newest first)
     all_videos.sort(key=lambda x: x['published_date'], reverse=True)
     
-    print(f"Total videos found: {len(all_videos)}")
     return all_videos
 
 
@@ -416,8 +413,6 @@ def get_core_sample_content(cutoff_date: datetime) -> Dict[str, Any]:
     Returns:
         Dictionary with featured_video and other_videos
     """
-    print(f"Fetching Core Sample content since {cutoff_date.strftime('%Y-%m-%d %H:%M:%S UTC')}")
-    
     # Fetch YouTube videos
     youtube_videos = fetch_youtube_videos(cutoff_date)
     
@@ -519,8 +514,6 @@ def handler(event: Dict[str, Any], context: Any) -> Dict[str, Any]:
             ContentType='text/markdown'
         )
         
-        print(f"Successfully saved core sample content to S3: s3://{bucket_name}/{filename}")
-        
         # Format response body for Bedrock agent
         response_body = {
             'TEXT': {
@@ -547,11 +540,6 @@ def handler(event: Dict[str, Any], context: Any) -> Dict[str, Any]:
             'sessionAttributes': session_attributes,
             'promptSessionAttributes': prompt_session_attributes
         }
-        
-        # Debug: Print formatted full response
-        # print("=== GENERATE CORE SAMPLE FUNCTION RESPONSE ===")
-        # print(json.dumps(full_response, indent=2, default=str))
-        # print("==============================================")
         
         # Return proper Bedrock agent response format
         return full_response

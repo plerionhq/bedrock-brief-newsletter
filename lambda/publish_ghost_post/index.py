@@ -88,8 +88,6 @@ def create_and_schedule_post(title: str, content: str, ghost_url: str, admin_api
             'Accept-Version': 'v5.0'
         }
         
-        print(f"Content length: {len(content)}")
-
         # Create lexical structure with markdown element
         lexical_content = {
             "root": {
@@ -146,8 +144,7 @@ def create_and_schedule_post(title: str, content: str, ghost_url: str, admin_api
         post_id = post['id']
         post_updated_at = post['updated_at']  # Get the actual updated_at from the created post
         
-        print(f"Successfully created draft post with ID: {post_id}")
-        print(f"Post updated_at: {post_updated_at}")
+
 
         # Optional: Update post with feature image before scheduling
         if feature_image_url:
@@ -174,7 +171,6 @@ def create_and_schedule_post(title: str, content: str, ghost_url: str, admin_api
             else:
                 updated = update_response.json()
                 post_updated_at = updated['posts'][0]['updated_at']
-                print("Feature image set on post.")
         
         # Step 2: Calculate the next available Wednesday at 8 AM Eastern Time
         
@@ -207,10 +203,7 @@ def create_and_schedule_post(title: str, content: str, ghost_url: str, admin_api
         eastern_offset = timedelta(hours=5)  # EST offset
         scheduled_time_eastern = scheduled_time_utc - eastern_offset
         
-        print(f"Current time UTC: {current_utc.strftime('%Y-%m-%d %H:%M UTC')}")
-        print(f"Days until target: {days_until_wednesday}")
-        print(f"Target Wednesday: {scheduled_time_eastern.strftime('%Y-%m-%d %I:%M %p ET')}")
-        print(f"Scheduled time UTC: {scheduled_time_utc.isoformat()}")
+
         
         # Step 3: Schedule the post using PUT request
         schedule_data = {
@@ -237,8 +230,6 @@ def create_and_schedule_post(title: str, content: str, ghost_url: str, admin_api
                 'scheduled_at': None,
                 'scheduled_at_eastern': None
             }
-        
-        print(f"Successfully scheduled post for {scheduled_time_eastern.strftime('%Y-%m-%d %I:%M %p ET')}")
         
         # Step 4: Configure email newsletter sending
         # The newsletter parameter is added to the URL when scheduling
@@ -319,7 +310,6 @@ def read_newsletter_from_s3(bucket_name: str, date_str: str) -> str:
         )
         
         newsletter_content = response['Body'].read().decode('utf-8')
-        print(f"Successfully read newsletter content from S3: s3://{bucket_name}/{filename}")
         
         return newsletter_content
         
@@ -452,11 +442,6 @@ def handler(event: Dict[str, Any], context: Any) -> Dict[str, Any]:
             'sessionAttributes': session_attributes,
             'promptSessionAttributes': prompt_session_attributes
         }
-        
-        # Debug: Print formatted full response
-        print("=== PUBLISH GHOST POST FUNCTION RESPONSE ===")
-        print(json.dumps(full_response, indent=2, default=str))
-        print("============================================")
         
         # Return proper Bedrock agent response format
         return full_response

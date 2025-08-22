@@ -35,7 +35,6 @@ def read_newsletter_from_s3(bucket_name: str, date_str: str) -> str:
         )
         
         newsletter_content = response['Body'].read().decode('utf-8')
-        print(f"Successfully read newsletter content from S3: s3://{bucket_name}/{filename}")
         
         return newsletter_content
         
@@ -102,7 +101,6 @@ Return ONLY the final Markdown content of the newsletter, no explanations or met
         response_body = json.loads(response.get('body').read())
         finalized_content = response_body['content'][0]['text']
         
-        print("Successfully finalized newsletter content using Bedrock")
         return finalized_content
         
     except ClientError as e:
@@ -137,7 +135,6 @@ def save_finalized_newsletter(bucket_name: str, date_str: str, finalized_content
             ContentType='text/markdown'
         )
         
-        print(f"Successfully saved finalized newsletter to S3: s3://{bucket_name}/{filename}")
         return True
         
     except Exception as e:
@@ -221,10 +218,6 @@ def handler(event: Dict[str, Any], context: Any) -> Dict[str, Any]:
         }
         
         # Debug: Print formatted full response
-        print("=== FINALIZE NEWSLETTER FUNCTION RESPONSE ===")
-        print(json.dumps(full_response, indent=2, default=str))
-        print("=============================================")
-        
         # Return proper Bedrock agent response format
         return full_response
         

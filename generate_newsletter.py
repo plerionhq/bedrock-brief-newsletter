@@ -25,9 +25,6 @@ def prepare_agent(client, agent_id):
     """Prepare the latest version of the agent before running it"""
     
     print("Preparing agent...")
-    print(f"Agent ID: {agent_id}")
-    print(f"Region: {REGION}")
-    print()
     
     try:
         # Create a DRAFT version of the agent
@@ -39,11 +36,7 @@ def prepare_agent(client, agent_id):
         agent_version = response.get('agentVersion')
         prepared_at = response.get('preparedAt')
         
-        print(f"Agent preparation initiated:")
-        print(f"  Status: {agent_status}")
-        print(f"  Version: {agent_version}")
-        print(f"  Prepared at: {prepared_at}")
-        print()
+
         
         # Wait for agent to be prepared
         if agent_status == 'PREPARING':
@@ -97,11 +90,6 @@ def invoke_agent(client, agent_id, alias_id, prompt, session_id):
     """Invoke the Bedrock agent and handle streaming response"""
     
     print("Generating newsletter...")
-    print(f"Agent ID: {agent_id}")
-    print(f"Alias ID: {alias_id}")
-    print(f"Session ID: {session_id}")
-    print(f"Region: {REGION}")
-    print()
     
     try:
         response = client.invoke_agent(
@@ -117,9 +105,6 @@ def invoke_agent(client, agent_id, alias_id, prompt, session_id):
         )
         
         completion = ""
-        print("Newsletter Content:")
-        print("=" * 50)
-        
         for event in response.get("completion"):
             # Collect agent output
             if 'chunk' in event:
@@ -135,7 +120,6 @@ def invoke_agent(client, agent_id, alias_id, prompt, session_id):
                 for key, value in trace.items():
                     logger.info("%s: %s", key, value)
         
-        print("\n" + "=" * 50)
         print(f"\nAgent response completed. Total length: {len(completion)} characters")
         
         return completion
@@ -167,7 +151,6 @@ def main():
             return 1
         
         print("Agent preparation completed successfully!")
-        print()
         
         # Generate newsletter
         result = invoke_agent(client, AGENT_ID, ALIAS_ID, "Generate a newsletter", SESSION_ID)

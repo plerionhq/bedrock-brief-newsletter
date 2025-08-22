@@ -23,8 +23,6 @@ def build_layer():
     python_dir.mkdir(parents=True, exist_ok=True)
     
     
-    print("Installing dependencies to Lambda layer...")
-
     # Install main dependencies
     subprocess.run([
         "pip", "install", "-r", "lambda_requirements.txt", 
@@ -32,7 +30,6 @@ def build_layer():
     ], check=True)
     
     # Install Pillow separately with Lambda-compatible flags
-    print("Installing Pillow for Lambda compatibility...")
     subprocess.run([
         "pip", "install", "Pillow",
         "-t", str(python_dir),
@@ -45,7 +42,6 @@ def build_layer():
     ], check=True)
     
     # Install lxml separately with Lambda-compatible flags
-    print("Installing lxml for Lambda compatibility...")
     subprocess.run([
         "pip", "install", "lxml",
         "-t", str(python_dir),
@@ -57,8 +53,7 @@ def build_layer():
         "--upgrade"
     ], check=True)
     
-    # Install lxml-html-clean separately with Lambda-compatible flags
-    print("Installing lxml-html-clean for Lambda compatibility...")
+    # Install lxml-html-clean separately with Lambda compatibility...")
     subprocess.run([
         "pip", "install", "lxml-html-clean",
         "-t", str(python_dir),
@@ -70,7 +65,6 @@ def build_layer():
         "--upgrade"
     ], check=True)
     
-    print(f"Lambda layer built successfully at {layer_dir}")
     return layer_dir
 
 if __name__ == "__main__":

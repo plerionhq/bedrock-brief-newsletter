@@ -30,7 +30,6 @@ def read_section_from_s3(bucket_name: str, section_name: str) -> Optional[str]:
         )
         
         content = response['Body'].read().decode('utf-8')
-        print(f"Successfully read section from S3: s3://{bucket_name}/{section_name}")
         return content
         
     except ClientError as e:
@@ -111,8 +110,6 @@ def assemble_newsletter(bucket_name: str, date_str: str) -> str:
         content = read_section_from_s3(bucket_name, section_filename)
         if content:
             newsletter_parts.append(content)
-        else:
-            print(f"Warning: Section {section_filename} not found")
     
     # Combine all parts
     complete_newsletter = "\n".join(newsletter_parts)
@@ -144,7 +141,6 @@ def save_newsletter_to_s3(bucket_name: str, date_str: str, newsletter_content: s
             ContentType='text/markdown'
         )
         
-        print(f"Successfully saved newsletter to S3: s3://{bucket_name}/{filename}")
         return True
         
     except Exception as e:
@@ -220,11 +216,6 @@ def handler(event: Dict[str, Any], context: Any) -> Dict[str, Any]:
             'sessionAttributes': session_attributes,
             'promptSessionAttributes': prompt_session_attributes
         }
-        
-        # Debug: Print formatted full response
-        # print("=== ASSEMBLE NEWSLETTER FUNCTION RESPONSE ===")
-        # print(json.dumps(full_response, indent=2, default=str))
-        # print("=============================================")
         
         # Return proper Bedrock agent response format
         return full_response

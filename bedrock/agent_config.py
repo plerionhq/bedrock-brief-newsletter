@@ -230,7 +230,6 @@ builders of artificial intelligence services on top of AWS.
             generate_the_quarry_action_group,
             generate_core_sample_action_group,
             assemble_newsletter_action_group,
-
             publish_ghost_post_action_group
         ],
         agent_resource_role_arn="",  # Will be set by CDK

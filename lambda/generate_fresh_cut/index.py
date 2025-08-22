@@ -209,8 +209,6 @@ def handler(event: Dict[str, Any], context: Any) -> Dict[str, Any]:
             ContentType='text/markdown'
         )
         
-        print(f"Successfully saved fresh cut content to S3: s3://{bucket_name}/{filename}")
-        
         # Format response body for Bedrock agent
         response_body = {
             'TEXT': {
@@ -237,11 +235,6 @@ def handler(event: Dict[str, Any], context: Any) -> Dict[str, Any]:
             'sessionAttributes': session_attributes,
             'promptSessionAttributes': prompt_session_attributes
         }
-        
-        # Debug: Print formatted full response
-        # print("=== GENERATE FRESH CUT FUNCTION RESPONSE ===")
-        # print(json.dumps(full_response, indent=2, default=str))
-        # print("============================================")
         
         # Return proper Bedrock agent response format
         return full_response

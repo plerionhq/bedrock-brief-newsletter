@@ -228,18 +228,18 @@ def generate_image_prompt_from_introduction(introduction_text: str, model_id: st
     try:
         bedrock = boto3.client('bedrock-runtime', region_name='us-east-1')
 
-        prompt = (
-            "Create a single creative prompt for an AI image model (Amazon Titan Image Generator) based on the newsletter introduction below.\n"
-            "Requirements:\n"
-            "- Use thick paint brush strokes and watercolor painting style"
-            "- Include at least one rock element\n"
-            "- No text, lettering, watermarks, logos, trademarks, or brand names\n"
-            "- Do not depict specific products, UIs, or copyrighted characters\n"
-            "- Horizontal/wide aspect composition suitable for a feature banner\n"
-            "- Keep under 30 words.\n\n"
-            "Respond with ONLY the image prompt text, no quotes or extra narration.\n\n"
-            f"Introduction:\n{introduction_text}\n"
-        )
+        prompt = f"""Create a single creative prompt for an AI image model (Amazon Titan Image Generator) based on the newsletter introduction below.
+Requirements:
+- Make it obvious how it relates to the introduction text
+- Use thick paint brush strokes and watercolor painting style
+- Include at least one rock element
+- No text, lettering, watermarks, logos, trademarks, or brand names
+- Do not depict specific products, UIs, or copyrighted characters
+- Horizontal/wide aspect composition suitable for a feature banner
+- Keep under 30 words.
+Respond with ONLY the image prompt text, no quotes or extra narration.
+
+Introduction:\n{introduction_text}\n"""
 
         body = json.dumps({
             "anthropic_version": "bedrock-2023-05-31",
@@ -384,20 +384,12 @@ def handler(event: Dict[str, Any], context: Any) -> Dict[str, Any]:
             ContentType='text/markdown'
         )
         
-        print(f"Successfully saved introduction content to S3: s3://{bucket_name}/{filename}")
-        
         # Generate a feature image prompt using the LLM and create a Titan image
         image_prompt = generate_image_prompt_from_introduction(response_text)
         image_key = None
         if image_prompt:
             base_key = f"introduction_{date_str}_feature"
             image_key = generate_feature_image_and_upload(image_prompt, bucket_name, base_key)
-            if image_key:
-                print(f"Successfully saved feature image to S3: s3://{bucket_name}/{image_key}")
-            else:
-                print("Feature image generation returned no key")
-        else:
-            print("Image prompt generation failed; skipping image generation")
 
         # Format response body for Bedrock agent
         response_body = {
@@ -428,11 +420,6 @@ def handler(event: Dict[str, Any], context: Any) -> Dict[str, Any]:
             'sessionAttributes': session_attributes,
             'promptSessionAttributes': prompt_session_attributes
         }
-        
-        # Debug: Print formatted full response
-        # print("=== GENERATE INTRODUCTION FUNCTION RESPONSE ===")
-        # print(json.dumps(full_response, indent=2, default=str))
-        # print("===============================================")
         
         # Return proper Bedrock agent response format
         return full_response

@@ -61,11 +61,6 @@ def handler(event: Dict[str, Any], context: Any) -> Dict[str, Any]:
             'promptSessionAttributes': prompt_session_attributes
         }
         
-        # Debug: Print formatted full response
-        # print("=== FULL FUNCTION RESPONSE ===")
-        # print(json.dumps(full_response, indent=2, default=str))
-        # print("==============================")
-        
         # Return proper Bedrock agent response format
         return full_response
         
