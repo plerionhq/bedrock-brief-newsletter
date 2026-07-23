@@ -155,49 +155,38 @@ def handler(event, context):
             region_name=REGION
         )
         
-        # Prepare the latest version of the agent before running it
+        # Prepare the latest version of the agent before running it.
+        # Raise on failure so the Lambda Errors metric increments and the
+        # CloudWatch alarm / SNS email alert fires (see the CDK stack).
         if not prepare_agent(agent_client, AGENT_ID):
             logger.error("Failed to prepare agent. Exiting.")
-            return {
-                'statusCode': 500,
-                'body': json.dumps({
-                    'error': 'Failed to prepare Bedrock agent',
-                    'session_id': session_id
-                })
-            }
-        
+            raise RuntimeError(
+                f"Failed to prepare Bedrock agent (session_id={session_id})"
+            )
+
         logger.info("Agent preparation completed successfully!")
-        
+
         # Generate newsletter
         result = invoke_agent(client, AGENT_ID, ALIAS_ID, "Generate a newsletter", session_id)
-        
-        if result:
-            logger.info("Newsletter generated successfully!")
-            return {
-                'statusCode': 200,
-                'body': json.dumps({
-                    'message': 'Newsletter generated successfully',
-                    'session_id': session_id,
-                    'content_length': len(result),
-                    'timestamp': datetime.now(timezone.utc).isoformat()
-                })
-            }
-        else:
+
+        if not result:
             logger.error("Failed to generate newsletter")
-            return {
-                'statusCode': 500,
-                'body': json.dumps({
-                    'error': 'Failed to generate newsletter',
-                    'session_id': session_id
-                })
-            }
-            
-    except Exception as e:
-        logger.error(f"Unexpected error: {e}")
+            raise RuntimeError(
+                f"Failed to generate newsletter (session_id={session_id})"
+            )
+
+        logger.info("Newsletter generated successfully!")
         return {
-            'statusCode': 500,
+            'statusCode': 200,
             'body': json.dumps({
-                'error': f'Unexpected error: {str(e)}',
+                'message': 'Newsletter generated successfully',
+                'session_id': session_id,
+                'content_length': len(result),
                 'timestamp': datetime.now(timezone.utc).isoformat()
             })
         }
+
+    except Exception as e:
+        # Re-raise so Lambda records an invocation error (drives the alarm).
+        logger.error(f"Unexpected error: {e}")
+        raise
