@@ -204,6 +204,14 @@ def create_and_schedule_post(title: str, content: str, ghost_url: str, admin_api
         # Convert back to Eastern Time for display (approximate)
         eastern_offset = timedelta(hours=5)  # EST offset
         scheduled_time_eastern = scheduled_time_utc - eastern_offset
+
+        # Derive the title date from the actual scheduled publish date so the
+        # title always matches when the issue goes out. The agent-supplied title
+        # can carry the content cutoff date (current date - N days) instead of
+        # the publish date, which is why an off-cadence run showed "16 Jul" on a
+        # post scheduled for 29 Jul.
+        scheduled_title = f"Bedrock Brief {scheduled_time_eastern.strftime('%d %b %Y')}"
+        print(f"Overriding title with scheduled publish date: {scheduled_title}")
         
 
         
@@ -212,6 +220,7 @@ def create_and_schedule_post(title: str, content: str, ghost_url: str, admin_api
             "posts": [{
                 "updated_at": post_updated_at,  # Use the actual updated_at from the created post
                 "status": "scheduled",
+                "title": scheduled_title,
                 "published_at": scheduled_time_utc.isoformat().replace('+00:00', 'Z')
             }]
         }
@@ -239,7 +248,7 @@ def create_and_schedule_post(title: str, content: str, ghost_url: str, admin_api
         
         return {
             'id': post_id,
-            'title': post['title'],
+            'title': scheduled_title,
             'url': post.get('url'),
             'status': 'scheduled',
             'scheduled_at': scheduled_time_utc.isoformat().replace('+00:00', 'Z'),
