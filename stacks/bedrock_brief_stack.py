@@ -12,9 +12,13 @@ from aws_cdk import (
     aws_s3 as s3,
     aws_events as events,
     aws_events_targets as targets,
+    aws_sns as sns,
+    aws_sns_subscriptions as subscriptions,
+    aws_cloudwatch as cloudwatch,
+    aws_cloudwatch_actions as cw_actions,
 )
 from constructs import Construct
-from config import OWNER_EMAIL, SERVICE_OWNER_EMAIL, STAGE, BEDROCK_MODEL_ID, BEDROCK_AGENT_ID, DAYS
+from config import OWNER_EMAIL, SERVICE_OWNER_EMAIL, STAGE, BEDROCK_MODEL_ID, BEDROCK_FOUNDATION_MODEL_ID, BEDROCK_AGENT_ID, DAYS
 from bedrock.agent_config import create_bedrock_agent_config
 
 
@@ -284,6 +288,38 @@ class BedrockBriefStack(Stack):
             targets.LambdaFunction(make_scheduled_issue_lambda)
         )
 
+        # --- Failure alerting --------------------------------------------------
+        # SNS topic that emails on scheduled-newsletter failures. The scheduled
+        # Lambda raises on failure (see lambda/make_scheduled_issue/index.py) so
+        # the Lambda Errors metric increments and the alarm below fires.
+        alerts_topic = sns.Topic(
+            self, "NewsletterAlertsTopic",
+            display_name="Bedrock Brief newsletter alerts",
+        )
+        alerts_topic.add_subscription(
+            subscriptions.EmailSubscription("security.digest@plerion.com")
+        )
+
+        # Alarm on any error from the scheduled newsletter Lambda. It runs weekly,
+        # so evaluate over a 1-hour window and don't alarm on the (expected) gaps.
+        scheduled_failure_alarm = cloudwatch.Alarm(
+            self, "ScheduledNewsletterFailureAlarm",
+            alarm_name="BedrockBrief-ScheduledNewsletter-Failure",
+            alarm_description=(
+                "The scheduled Bedrock Brief newsletter run failed "
+                "(MakeScheduledIssue Lambda reported an error)."
+            ),
+            metric=make_scheduled_issue_lambda.metric_errors(
+                period=cdk.Duration.hours(1),
+                statistic="Sum",
+            ),
+            threshold=1,
+            evaluation_periods=1,
+            comparison_operator=cloudwatch.ComparisonOperator.GREATER_THAN_OR_EQUAL_TO_THRESHOLD,
+            treat_missing_data=cloudwatch.TreatMissingData.NOT_BREACHING,
+        )
+        scheduled_failure_alarm.add_alarm_action(cw_actions.SnsAction(alerts_topic))
+
         # Create IAM role for Bedrock agent
         agent_role = iam.Role(
             self, "BedrockAgentRole",
@@ -301,7 +337,11 @@ class BedrockBriefStack(Stack):
                         "bedrock:InvokeModelWithResponseStream"
                     ],
                     resources=[
-                        f"arn:aws:bedrock:{cdk.Stack.of(self).region}::foundation-model/{BEDROCK_MODEL_ID}"
+                        # The cross-region inference profile the agent invokes...
+                        f"arn:aws:bedrock:*:{cdk.Stack.of(self).account}:inference-profile/{BEDROCK_MODEL_ID}",
+                        # ...and the underlying foundation model in every member region
+                        # the profile may route to (us-* profiles span multiple regions).
+                        f"arn:aws:bedrock:*::foundation-model/{BEDROCK_FOUNDATION_MODEL_ID}"
                     ]
                 )
             ]
