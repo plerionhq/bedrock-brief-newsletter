@@ -321,7 +321,11 @@ class BedrockBriefStack(Stack):
             display_name="Bedrock Brief newsletter alerts",
         )
         alerts_topic.add_subscription(
-            subscriptions.EmailSubscription("security.digest@plerion.com")
+            # security.digest@plerion.com is a distribution list that drops
+            # external SNS mail (confirmation never delivered), so alerts go to
+            # a confirmed-deliverable address. Re-add the DL once its mail
+            # settings accept no-reply@sns.amazonaws.com.
+            subscriptions.EmailSubscription("daniel.grzelak@plerion.com")
         )
 
         # Alarm on any error from the scheduled newsletter Lambda. It runs weekly,
