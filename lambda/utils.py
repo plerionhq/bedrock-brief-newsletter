@@ -3,9 +3,53 @@ Utility functions for the Bedrock Brief newsletter generator.
 """
 
 import json
+import os
 from datetime import datetime, date
 from pathlib import Path
 from typing import Dict, Any
+
+import boto3
+
+# Lazily-created SSM client and per-container secret cache.
+_ssm_client = None
+_secret_cache: Dict[str, str] = {}
+
+
+def get_secret(name: str, default: str = "") -> str:
+    """Resolve a secret value at runtime.
+
+    Precedence:
+      1. SSM Parameter Store SecureString at ``{SSM_PARAM_PREFIX}/{name}``
+         (the deployed path; SSM_PARAM_PREFIX is set as a Lambda env var).
+      2. The matching environment variable named ``name`` (local dev fallback).
+      3. ``default``.
+
+    Values are cached for the lifetime of the execution environment so we only
+    hit SSM once per cold start.
+    """
+    if name in _secret_cache:
+        return _secret_cache[name]
+
+    value = None
+    prefix = os.environ.get("SSM_PARAM_PREFIX")
+    if prefix:
+        global _ssm_client
+        if _ssm_client is None:
+            _ssm_client = boto3.client("ssm")
+        try:
+            resp = _ssm_client.get_parameter(
+                Name=f"{prefix}/{name}", WithDecryption=True
+            )
+            value = resp["Parameter"]["Value"]
+        except Exception:
+            # Fall back to env var / default if the parameter is missing.
+            value = None
+
+    if value is None:
+        value = os.environ.get(name, default)
+
+    _secret_cache[name] = value
+    return value
 
 # AWS AI Services
 AWS_AI_SERVICES = [

@@ -2,7 +2,6 @@
 Main CDK stack for Bedrock Brief project
 """
 
-import os
 import aws_cdk as cdk
 from aws_cdk import (
     Stack,
@@ -18,7 +17,7 @@ from aws_cdk import (
     aws_cloudwatch_actions as cw_actions,
 )
 from constructs import Construct
-from config import OWNER_EMAIL, SERVICE_OWNER_EMAIL, STAGE, BEDROCK_MODEL_ID, BEDROCK_FOUNDATION_MODEL_ID, BEDROCK_AGENT_ID, DAYS
+from config import OWNER_EMAIL, SERVICE_OWNER_EMAIL, STAGE, BEDROCK_MODEL_ID, BEDROCK_FOUNDATION_MODEL_ID, BEDROCK_AGENT_ID, DAYS, SSM_PARAM_PREFIX, IMAGE_MODEL_ID, IMAGE_MODEL_REGION
 from bedrock.agent_config import create_bedrock_agent_config
 
 
@@ -117,6 +116,34 @@ class BedrockBriefStack(Stack):
         # Attach the S3 policy to the Lambda role
         s3_policy.attach_to_role(lambda_role)
 
+        # Allow the Lambdas to read runtime secrets from SSM Parameter Store
+        # (SecureString) instead of receiving them as plaintext env vars.
+        ssm_policy = iam.Policy(
+            self, "LambdaSsmSecretsPolicy",
+            statements=[
+                iam.PolicyStatement(
+                    effect=iam.Effect.ALLOW,
+                    actions=["ssm:GetParameter", "ssm:GetParameters"],
+                    resources=[
+                        f"arn:aws:ssm:{cdk.Stack.of(self).region}:"
+                        f"{cdk.Stack.of(self).account}:parameter{SSM_PARAM_PREFIX}/*"
+                    ],
+                ),
+                # Decrypt SecureString values, scoped to SSM via the service condition.
+                iam.PolicyStatement(
+                    effect=iam.Effect.ALLOW,
+                    actions=["kms:Decrypt"],
+                    resources=["*"],
+                    conditions={
+                        "StringEquals": {
+                            "kms:ViaService": f"ssm.{cdk.Stack.of(self).region}.amazonaws.com"
+                        }
+                    },
+                ),
+            ],
+        )
+        ssm_policy.attach_to_role(lambda_role)
+
         # Current time Lambda function
         current_time_lambda = _lambda.Function(
             self, "CurrentTimeFunction",
@@ -154,8 +181,9 @@ class BedrockBriefStack(Stack):
             environment={
                 "POWERTOOLS_SERVICE_NAME": "bedrock-brief",
                 "BEDROCK_MODEL_ID": BEDROCK_MODEL_ID,
-                "SEARCH_API_KEY": os.environ.get("SEARCH_API_KEY", ""),
-                "YOUTUBE_API_KEY": os.environ.get("YOUTUBE_API_KEY", ""),
+                "SSM_PARAM_PREFIX": SSM_PARAM_PREFIX,
+                "IMAGE_MODEL_ID": IMAGE_MODEL_ID,
+                "IMAGE_MODEL_REGION": IMAGE_MODEL_REGION,
                 "CONTENT_BUCKET_NAME": content_bucket.bucket_name,
             }
         )
@@ -173,8 +201,7 @@ class BedrockBriefStack(Stack):
             environment={
                 "POWERTOOLS_SERVICE_NAME": "bedrock-brief",
                 "BEDROCK_MODEL_ID": BEDROCK_MODEL_ID,
-                "SEARCH_API_KEY": os.environ.get("SEARCH_API_KEY", ""),
-                "YOUTUBE_API_KEY": os.environ.get("YOUTUBE_API_KEY", ""),
+                "SSM_PARAM_PREFIX": SSM_PARAM_PREFIX,
                 "CONTENT_BUCKET_NAME": content_bucket.bucket_name,
             }
         )
@@ -192,8 +219,7 @@ class BedrockBriefStack(Stack):
             environment={
                 "POWERTOOLS_SERVICE_NAME": "bedrock-brief",
                 "BEDROCK_MODEL_ID": BEDROCK_MODEL_ID,
-                "SEARCH_API_KEY": os.environ.get("SEARCH_API_KEY", ""),
-                "YOUTUBE_API_KEY": os.environ.get("YOUTUBE_API_KEY", ""),
+                "SSM_PARAM_PREFIX": SSM_PARAM_PREFIX,
                 "CONTENT_BUCKET_NAME": content_bucket.bucket_name,
             }
         )
@@ -211,8 +237,7 @@ class BedrockBriefStack(Stack):
             environment={
                 "POWERTOOLS_SERVICE_NAME": "bedrock-brief",
                 "BEDROCK_MODEL_ID": BEDROCK_MODEL_ID,
-                "SEARCH_API_KEY": os.environ.get("SEARCH_API_KEY", ""),
-                "YOUTUBE_API_KEY": os.environ.get("YOUTUBE_API_KEY", ""),
+                "SSM_PARAM_PREFIX": SSM_PARAM_PREFIX,
                 "CONTENT_BUCKET_NAME": content_bucket.bucket_name,
             }
         )
@@ -246,8 +271,7 @@ class BedrockBriefStack(Stack):
             layers=[dependencies_layer],
             environment={
                 "POWERTOOLS_SERVICE_NAME": "bedrock-brief",
-                "GHOST_URL": os.environ.get("GHOST_URL", ""),
-                "GHOST_ADMIN_API_KEY": os.environ.get("GHOST_ADMIN_API_KEY", ""),
+                "SSM_PARAM_PREFIX": SSM_PARAM_PREFIX,
                 "CONTENT_BUCKET_NAME": content_bucket.bucket_name,
             }
         )
@@ -297,7 +321,11 @@ class BedrockBriefStack(Stack):
             display_name="Bedrock Brief newsletter alerts",
         )
         alerts_topic.add_subscription(
-            subscriptions.EmailSubscription("security.digest@plerion.com")
+            # security.digest@plerion.com is a distribution list that drops
+            # external SNS mail (confirmation never delivered), so alerts go to
+            # a confirmed-deliverable address. Re-add the DL once its mail
+            # settings accept no-reply@sns.amazonaws.com.
+            subscriptions.EmailSubscription("daniel.grzelak@plerion.com")
         )
 
         # Alarm on any error from the scheduled newsletter Lambda. It runs weekly,

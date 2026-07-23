@@ -14,14 +14,14 @@ from jinja2 import Environment, FileSystemLoader
 from youtube_transcript_api import YouTubeTranscriptApi
 import re
 
-from utils import BEDROCK_SYSTEM_PROMPT, is_ai_related
+from utils import BEDROCK_SYSTEM_PROMPT, is_ai_related, get_secret
 
 # Get Bedrock model ID from environment variable
 BEDROCK_MODEL_ID = os.environ.get("BEDROCK_MODEL_ID", "anthropic.claude-3-sonnet-20240229-v1:0")
 
 # Get API keys from environment variables
-SEARCH_API_KEY = os.environ.get("SEARCH_API_KEY", "")
-YOUTUBE_API_KEY = os.environ.get("YOUTUBE_API_KEY", "")
+SEARCH_API_KEY = get_secret("SEARCH_API_KEY")
+YOUTUBE_API_KEY = get_secret("YOUTUBE_API_KEY")
 
 
 def fetch_channel_videos(channel_id: str, api_key: str, max_results: int = 20) -> List[Dict[str, Any]]:
