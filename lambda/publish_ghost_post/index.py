@@ -18,9 +18,11 @@ except ImportError:
     print("Error: PyJWT package not found. Install it with: pip install PyJWT")
     raise ImportError("PyJWT is required for Ghost integration")
 
-# Get environment variables
-GHOST_URL = os.environ.get("GHOST_URL")
-GHOST_API_KEY = os.environ.get("GHOST_ADMIN_API_KEY")
+# Resolve secrets from SSM Parameter Store at runtime (see utils.get_secret).
+from utils import get_secret
+
+GHOST_URL = get_secret("GHOST_URL") or None
+GHOST_API_KEY = get_secret("GHOST_ADMIN_API_KEY") or None
 
 
 def create_jwt_token(admin_api_key: str) -> str:

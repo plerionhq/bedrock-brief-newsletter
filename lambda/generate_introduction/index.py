@@ -14,14 +14,14 @@ from typing import Dict, Any, List, Optional
 from newspaper import Article
 import sys
 
-from utils import BEDROCK_SYSTEM_PROMPT
+from utils import BEDROCK_SYSTEM_PROMPT, get_secret
 
 # Get Bedrock model ID from environment variable
 BEDROCK_MODEL_ID = os.environ.get("BEDROCK_MODEL_ID", "anthropic.claude-3-sonnet-20240229-v1:0")
 
 # Get API keys from environment variables
-SEARCH_API_KEY = os.environ.get("SEARCH_API_KEY", "")
-YOUTUBE_API_KEY = os.environ.get("YOUTUBE_API_KEY", "")
+SEARCH_API_KEY = get_secret("SEARCH_API_KEY")
+YOUTUBE_API_KEY = get_secret("YOUTUBE_API_KEY")
 
 
 def fetch_aws_ai_news(api_key: str, num_results: int = 5) -> Optional[Dict]:
@@ -272,7 +272,11 @@ def generate_feature_image_and_upload(prompt: str, bucket_name: str, base_key: s
     Returns the S3 key of the uploaded image on success, otherwise None.
     """
     try:
-        bedrock = boto3.client('bedrock-runtime', region_name='us-east-1')
+        # Stability text-to-image models live in us-west-2 (see config.py), so
+        # the image client may target a different region than the text models.
+        image_model_id = os.environ.get("IMAGE_MODEL_ID", "stability.stable-image-core-v1:1")
+        image_region = os.environ.get("IMAGE_MODEL_REGION", "us-west-2")
+        bedrock = boto3.client('bedrock-runtime', region_name=image_region)
         s3_client = boto3.client('s3')
 
         seed = random.randint(0, 2_147_483_647)
@@ -295,29 +299,30 @@ def generate_feature_image_and_upload(prompt: str, bucket_name: str, base_key: s
         for idx, attempt_prompt in enumerate(attempts):
             try:
                 safe_prompt = attempt_prompt.strip()[:512]
-                cfg = 8.0 if idx == 0 else (6.5 if idx == 1 else 5.5)
+                # Stability text-to-image request schema (wide 16:9 banner).
                 native_request = {
-                    "taskType": "TEXT_IMAGE",
-                    "textToImageParams": {
-                        "text": safe_prompt
-                    },
-                    "imageGenerationConfig": {
-                        "numberOfImages": 1,
-                        "height": 768,
-                        "width": 1408,
-                        "cfgScale": cfg,
-                        "seed": seed + idx
-                    }
+                    "prompt": safe_prompt,
+                    "mode": "text-to-image",
+                    "aspect_ratio": "16:9",
+                    "output_format": "png",
+                    "seed": seed + idx,
                 }
 
                 request = json.dumps(native_request)
                 response = bedrock.invoke_model(
-                    modelId="amazon.titan-image-generator-v2:0",
+                    modelId=image_model_id,
                     body=request,
                     accept="application/json",
                     contentType="application/json",
                 )
                 model_response = json.loads(response["body"].read())
+
+                # A non-null finish reason means the image was filtered/rejected.
+                finish_reasons = model_response.get("finish_reasons") or [None]
+                if finish_reasons[0]:
+                    print(f"Image generation attempt {idx+1} filtered: {finish_reasons[0]}")
+                    continue
+
                 base64_image_data = model_response["images"][0]
                 image_bytes = base64.b64decode(base64_image_data)
                 key = f"{base_key}.png"
@@ -326,10 +331,7 @@ def generate_feature_image_and_upload(prompt: str, bucket_name: str, base_key: s
             except Exception as e:
                 err_text = str(e)
                 print(f"Image generation attempt {idx+1} failed: {err_text}")
-                # Try next attempt if content was blocked or request malformed
-                if "blocked" in err_text.lower() or "validationexception" in err_text.lower() or "malformed" in err_text.lower():
-                    continue
-                # Otherwise still continue to try fallbacks
+                # Try the next fallback prompt regardless of the failure mode.
                 continue
     except Exception as e:
         print(f"Error generating or uploading feature image: {e}")
